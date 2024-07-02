@@ -1,5 +1,7 @@
 'use strict';
 
+import crypto from 'crypto';
+
 import dgram from 'dgram';
 import {Buffer} from 'buffer';
 import { URL } from 'url';
@@ -49,6 +51,19 @@ function buildAnnounceReq(connId){
 
 }
 function buildConnReq(){
+    const buf =Buffer.alloc(16);
+
+    // Connection ID
+    buf.writeUInt32BE(0x417,0);
+    buf.writeUInt32BE(0x27101980,4);
+
+    
+    //Writing action (0 means connection request)
+    buf.writeUInt32BE(0,8);
+
+    // generating random bytes to represent transaction Id to uniquely identify a session
+    crypto.randomBytes(4).copy(buf,12);
+    return buf;
 
 }
 
@@ -58,4 +73,9 @@ function parseAnnounceResp(resp){
 
 function parseConnResp(resp){
 
+    return {
+        action:resp.readUInt32BE(0),
+        transactionId:resp.readUInt32BE(4);
+        connectionId:resp.slice(8);
+    }
 }
