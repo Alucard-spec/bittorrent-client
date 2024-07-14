@@ -2,7 +2,7 @@
 
 import fs from "fs";
 import bencode from "bencode";
-import bignum from "bignum";
+import BN from "bn.js";
 
 import bencode from "bencode";
 import crypto from "crypto";
@@ -13,6 +13,12 @@ export function open (filepath){
 };
 export function size(torrent){
 const size= torrent.info.files? torrent.info.files.map(file => file.length).reduce((a,b)=>a+b):torrent.info.length;
+
+//Modified code Debug in case of error
+
+const bn = new BN(size);
+return bn.toBuffer('be',8);
+
 };
 
 export function infoHash(torrent){

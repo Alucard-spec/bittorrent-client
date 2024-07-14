@@ -1,7 +1,7 @@
 {
   "type": "module",
   "dependencies": {
-    "bencode": "^4.0.0"
+    "bencode": "^4.0.0",
+    "bn.js": "^5.2.1"
   }
-  
 }
