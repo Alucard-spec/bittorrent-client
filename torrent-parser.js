@@ -2,17 +2,23 @@
 
 import fs from "fs";
 import bencode from "bencode";
+import bignum from "bignum";
 
-module.exports.open =(filepath)=>{
+import bencode from "bencode";
+import crypto from "crypto";
+
+export function open (filepath){
     return bencode.decode(fs.readFileSync(filepath));
 
 };
-module.exports.size=torrent=>{
-
+export function size(torrent){
+const size= torrent.info.files? torrent.info.files.map(file => file.length).reduce((a,b)=>a+b):torrent.info.length;
 };
 
-module.exports.infoHash= torrent=>{
-
+export function infoHash(torrent){
+    
+    const info = bencode.encode(torrent.info);
+    return crypto.createHash('sha1').update(info).digest();
 };
 
 

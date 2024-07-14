@@ -2,13 +2,13 @@
 
 import fs from 'fs';
 import bencode from 'bencode';
-import tracker from './tracker';
-import torrentParser from "./torrent-parser";
+import {getPeers} from './tracker.js';
+import {open} from "./torrent-parser.js";
 
 // const torrent = bencode.decode(fs.readFileSync('puppy.torrent'));
-const torrent = torrentParser.open('puppy.torrent');
+const torrent = open('puppy.torrent');
 
-tracker.getPeers(torrent,peers=>{
+getPeers(torrent,peers=>{
     console.log('List of peers ',peers);
 });
 

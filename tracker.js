@@ -1,14 +1,14 @@
 'use strict';
 
 import crypto from 'crypto';
-import torrentParser from "./torrent-parser";
-import util from "./util";
+import {infoHash,size} from "./torrent-parser.js";
+import {genId} from "./util.js";
 
 import dgram from 'dgram';
 import {Buffer} from 'buffer';
 import { URL } from 'url';
 
-module.exports.getPeers =(torrent, callback) =>{
+export function getPeers (torrent, callback){
 
     const socket= dgram.createSocket('udp4');
     const url = Buffer.from(torrent.announce).toString('utf8');
@@ -63,16 +63,16 @@ function buildAnnounceReq(connId,torrent,port = 6881){
     crypto.randomBytes(4).copy(buf,12);
 
     // info hash
-    torrentParser.infoHash(torrent).copy(buf,16);
+    infoHash(torrent).copy(buf,16);
 
     // peer Id
-    util.getId().copy(buf,36);
+    genId().copy(buf,36);
 
     // downloaded
     Buffer.alloc(8).copy(buf,56);
 
     //left
-    torrentParser.size(torrent).copy(buf,64);
+    size(torrent).copy(buf,64);
 
     // uploaded
     Buffer.alloc(8).copy(buf,72);
@@ -147,3 +147,4 @@ function parseConnResp(resp){
         connectionId:resp.slice(8)
     }
 }
+
