@@ -11,19 +11,28 @@ import { URL } from 'url';
 export function getPeers (torrent, callback){
 
     const socket= dgram.createSocket('udp4');
+    
     const url = Buffer.from(torrent.announce).toString('utf8');
+    
+    console.log(url);
 
     // sending connection request
-    udpSend(socket,buildConnReq(),url);
+    const conrq=buildConnReq();
+    udpSend(socket,conrq,url);
+
+    console.log("waiting")
     
-    socket.on('message',response =>{
+    socket.on('message',(response,rinfo) =>{
+
+        console.log("socket message recieved");
+
         if(respType(response)=== 'connect'){
             
             //recieving and parsing connection response
             
             const connResp = parseConnResp(response);
             
-            
+            console.log(connResp);
             const announceReq= buildAnnounceReq(connResp.connectionId,torrent);
             
             //sending announce request
@@ -41,13 +50,35 @@ export function getPeers (torrent, callback){
         }
     }
 );
+
+socket.on('error', (err) => {
+    console.error('Socket error:', err);
+    socket.close();
+});
 };
 
-function udpSend(socket, message, rawUrl, callback=()=>{}){
+function udpSend(socket, message, rawUrl){
     const url = new URL(rawUrl);
-    socket.send(message,0,message.length,url.port,url.host,callback);
+    console.log(url);
+    console.log(message);
+    socket.send(message,0,message.length,url.port,url.hostname, (err, bytes) => {
+        if (err) {
+            console.error('Oops error occured:', err);
+        } else {
+            console.log('Message sent successfully, bytes sent:', bytes);
+        }
+    })
+    
+    console.log("done");
 }
+
+
+
 function respType(resp){
+
+    const action = resp.readUInt32BE(0);
+    if(action==0) return 'connect';
+    if(action ==1) return 'announce';
 
 }
 function buildAnnounceReq(connId,torrent,port = 6881){
@@ -98,6 +129,10 @@ function buildAnnounceReq(connId,torrent,port = 6881){
 
 
 }
+
+
+// Connection request function
+
 function buildConnReq(){
     const buf =Buffer.alloc(16);
 
@@ -111,6 +146,8 @@ function buildConnReq(){
 
     // generating random bytes to represent transaction Id to uniquely identify a session
     crypto.randomBytes(4).copy(buf,12);
+    console.log(buf)
+    
     return buf;
 
 }

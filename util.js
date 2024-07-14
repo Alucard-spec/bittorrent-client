@@ -9,5 +9,6 @@ export function genId(){
         id=crypto.randomBytes(20);
         Buffer.from('-AT001-').copy(id,0);
     }
+    console.log(id);
     return id;
 }

@@ -4,7 +4,7 @@ import fs from "fs";
 import bencode from "bencode";
 import BN from "bn.js";
 
-import bencode from "bencode";
+
 import crypto from "crypto";
 
 export function open (filepath){
