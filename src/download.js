@@ -7,11 +7,15 @@ import {getPeers} from "./tracker.js";
 import {buildBitField,buildCancel,buildChoke,buildHandshake,buildHave,buildInterested,buildKeepAlive,buildPiece,buildPort,buildRequest,buildUnchoke,buildUninterested,parse} from "./message.js";
 
 export function downloads(torrent){
+
+  const requested=[];
     getPeers(torrent,peers=>{
-        peers.forEach(peer => download(peer,torrent));
+        peers.forEach(peer => download(peer,torrent,requested));
     });
 };
-function download(peer,torrent){
+function download(peer,torrent,requested){
+
+    const queue=[]
     const socket = net.Socket();
     socket.on('error',console.log("Error recieved"));
     socket.connect(peer.port, peer.ip,()=>{
@@ -19,7 +23,7 @@ function download(peer,torrent){
         socket.write(buildHandshake(torrent));
     });
     onWholeMsg(socket, msg => {
-        msgHandler(msg,socket);   
+        msgHandler(msg,socket,requested,queue);   
       });    
 }
 
@@ -27,7 +31,7 @@ function download(peer,torrent){
 
 // so what we are doing in the above functions is get the peers from the get peer function of tracker.js and then creatig a tcp connection with each of those peers and start exchanging messages.
 
-function msgHandler(msg, socket) {
+function msgHandler(msg, socket,requested,queue) {
   if (isHandshake(msg)) {
     socket.write(message.buildInterested());
   } else {
@@ -35,9 +39,9 @@ function msgHandler(msg, socket) {
 
     if (m.id === 0) chokeHandler();
     if (m.id === 1) unchokeHandler();
-    if (m.id === 4) haveHandler(m.payload);
+    if (m.id === 4) haveHandler(m.payload,socket,requested,queue);
     if (m.id === 5) bitfieldHandler(m.payload);
-    if (m.id === 7) pieceHandler(m.payload);
+    if (m.id === 7) pieceHandler(m.payload, socket, requested, queue);
   }
     
   }
@@ -69,10 +73,34 @@ function chokeHandler(){
 }
 function unchokeHandler(){
 
-}
+} 
 
-function haveHandler(payload) {  }
+function haveHandler(payload,socket ,requested,queue) {
+  const pieceIndex = payload.readUInt32BE(0);
+  queue.push(pieceIndex);
+  if (queue.length === 1) {
+    requestPiece(socket, requested, queue);
+  }
+
+  if (!requested[pieceIndex]) {
+    socket.write(buildRequest());
+  }
+  requested[pieceIndex] = true;
+
+  }
+
+
 
 function bitfieldHandler(payload) { }
 
-function pieceHandler(payload) { }
+function pieceHandler(payload, socket, requested, queue) { }
+
+function requestPiece(socket, requested, queue) {
+  if (requested[queue[0]]) {
+    queue.shift();
+  } else {
+    // this is pseudo-code, as buildRequest actually takes slightly more
+    // complex arguments
+    socket.write(buildRequest(pieceIndex));
+  }
+}
