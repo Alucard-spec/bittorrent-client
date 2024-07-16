@@ -4,26 +4,30 @@ import net from "net";
 import {Buffer} from "buffer";
 import {getPeers} from "./tracker.js";
 
+import Pieces from "./Pieces.js";
+
 import {buildBitField,buildCancel,buildChoke,buildHandshake,buildHave,buildInterested,buildKeepAlive,buildPiece,buildPort,buildRequest,buildUnchoke,buildUninterested,parse} from "./message.js";
 
 export function downloads(torrent){
 
-  const requested=[];
+  
     getPeers(torrent,peers=>{
-        peers.forEach(peer => download(peer,torrent,requested));
+        const pieces= new Pieces(torrent.info.pieces.length/20);
+        peers.forEach(peer => download(peer,torrent,requested,pieces));
     });
 };
-function download(peer,torrent,requested){
+function download(peer,torrent,pieces){
 
-    const queue=[]
+    
     const socket = net.Socket();
     socket.on('error',console.log("Error recieved"));
     socket.connect(peer.port, peer.ip,()=>{
-        // 1
+        
         socket.write(buildHandshake(torrent));
     });
+    const queue={ choked: true , queue:[]};
     onWholeMsg(socket, msg => {
-        msgHandler(msg,socket,requested,queue);   
+        msgHandler(msg,socket,pieces,queue);   
       });    
 }
 
@@ -31,17 +35,17 @@ function download(peer,torrent,requested){
 
 // so what we are doing in the above functions is get the peers from the get peer function of tracker.js and then creatig a tcp connection with each of those peers and start exchanging messages.
 
-function msgHandler(msg, socket,requested,queue) {
+function msgHandler(msg, socket,pieces,queue) {
   if (isHandshake(msg)) {
-    socket.write(message.buildInterested());
+    socket.write(buildInterested());
   } else {
-    const m = message.parse(msg);
+    const m = parse(msg);
 
-    if (m.id === 0) chokeHandler();
-    if (m.id === 1) unchokeHandler();
-    if (m.id === 4) haveHandler(m.payload,socket,requested,queue);
+    if (m.id === 0) chokeHandler(socket);
+    if (m.id === 1) unchokeHandler(socket, pieces, queue);
+    if (m.id === 4) haveHandler(m.payload,socket,pieces,queue);
     if (m.id === 5) bitfieldHandler(m.payload);
-    if (m.id === 7) pieceHandler(m.payload, socket, requested, queue);
+    if (m.id === 7) pieceHandler(m.payload, socket, pieces, queue);
   }
     
   }
@@ -68,24 +72,21 @@ function onWholeMsg(socket, callback){
     });
 }
 
-function chokeHandler(){
+function chokeHandler(socket){
+  socket.end();
 
 }
-function unchokeHandler(){
+function unchokeHandler(socket, pieces, queue){
+  queue.choked=false;
+  requestPiece(socket,pieces,queue);
 
 } 
 
-function haveHandler(payload,socket ,requested,queue) {
+function haveHandler(payload,socket ,pieces,queue) {
   const pieceIndex = payload.readUInt32BE(0);
-  queue.push(pieceIndex);
-  if (queue.length === 1) {
-    requestPiece(socket, requested, queue);
-  }
-
-  if (!requested[pieceIndex]) {
-    socket.write(buildRequest());
-  }
-  requested[pieceIndex] = true;
+  const queueEmpty = queue.length === 0;
+  queue.queue(pieceIndex);
+  if (queueEmpty) requestPiece(socket, pieces, queue);
 
   }
 
@@ -93,14 +94,19 @@ function haveHandler(payload,socket ,requested,queue) {
 
 function bitfieldHandler(payload) { }
 
-function pieceHandler(payload, socket, requested, queue) { }
+function pieceHandler(payload, socket, pieces, queue) { }
 
-function requestPiece(socket, requested, queue) {
-  if (requested[queue[0]]) {
-    queue.shift();
-  } else {
-    // this is pseudo-code, as buildRequest actually takes slightly more
-    // complex arguments
-    socket.write(buildRequest(pieceIndex));
+function requestPiece(socket, pieces, queue) {
+ 
+  if (queue.choked) return null;
+
+  while (queue.queue.length) {
+    const pieceIndex = queue.shift();
+    if (pieces.needed(pieceIndex)) {
+      // 
+      socket.write(buildRequest(pieceIndex));
+      pieces.addRequested(pieceIndex);
+      break;
+    }
   }
 }
