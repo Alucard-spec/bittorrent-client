@@ -4,7 +4,7 @@ import net from "net";
 import {Buffer} from "buffer";
 import {getPeers} from "./tracker.js";
 
-import {buildBitField,buildCancel,buildChoke,buildHandshake,buildHave,buildInterested,buildKeepAlive,buildPiece,buildPort,buildRequest,buildUnchoke,buildUninterested} from "./message.js";
+import {buildBitField,buildCancel,buildChoke,buildHandshake,buildHave,buildInterested,buildKeepAlive,buildPiece,buildPort,buildRequest,buildUnchoke,buildUninterested,parse} from "./message.js";
 
 export function downloads(torrent){
     getPeers(torrent,peers=>{
@@ -28,7 +28,18 @@ function download(peer,torrent){
 // so what we are doing in the above functions is get the peers from the get peer function of tracker.js and then creatig a tcp connection with each of those peers and start exchanging messages.
 
 function msgHandler(msg, socket) {
-    if (isHandshake(msg)) socket.write(message.buildInterested());
+  if (isHandshake(msg)) {
+    socket.write(message.buildInterested());
+  } else {
+    const m = message.parse(msg);
+
+    if (m.id === 0) chokeHandler();
+    if (m.id === 1) unchokeHandler();
+    if (m.id === 4) haveHandler(m.payload);
+    if (m.id === 5) bitfieldHandler(m.payload);
+    if (m.id === 7) pieceHandler(m.payload);
+  }
+    
   }
 
   function isHandshake(msg) {
@@ -52,3 +63,16 @@ function onWholeMsg(socket, callback){
       }
     });
 }
+
+function chokeHandler(){
+
+}
+function unchokeHandler(){
+
+}
+
+function haveHandler(payload) {  }
+
+function bitfieldHandler(payload) { }
+
+function pieceHandler(payload) { }
