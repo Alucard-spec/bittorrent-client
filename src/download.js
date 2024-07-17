@@ -6,14 +6,16 @@ import {getPeers} from "./tracker.js";
 
 import Pieces from "./Pieces.js";
 
+import Queue from "./Queue.js";
+
 import {buildBitField,buildCancel,buildChoke,buildHandshake,buildHave,buildInterested,buildKeepAlive,buildPiece,buildPort,buildRequest,buildUnchoke,buildUninterested,parse} from "./message.js";
 
 export function downloads(torrent){
 
   
     getPeers(torrent,peers=>{
-        const pieces= new Pieces(torrent.info.pieces.length/20);
-        peers.forEach(peer => download(peer,torrent,requested,pieces));
+        const pieces= new Pieces(torrent);
+        peers.forEach(peer => download(peer,torrentpieces));
     });
 };
 function download(peer,torrent,pieces){
@@ -25,7 +27,7 @@ function download(peer,torrent,pieces){
         
         socket.write(buildHandshake(torrent));
     });
-    const queue={ choked: true , queue:[]};
+    const queue=new Queue(torrent);
     onWholeMsg(socket, msg => {
         msgHandler(msg,socket,pieces,queue);   
       });    
@@ -100,12 +102,11 @@ function requestPiece(socket, pieces, queue) {
  
   if (queue.choked) return null;
 
-  while (queue.queue.length) {
-    const pieceIndex = queue.shift();
-    if (pieces.needed(pieceIndex)) {
-      // 
-      socket.write(buildRequest(pieceIndex));
-      pieces.addRequested(pieceIndex);
+  while (queue.length()) {
+    const pieceBlock = queue.deque();
+    if (pieces.needed(pieceBlock)) {
+      socket.write(buildRequest(pieceBlock));
+      pieces.addRequested(pieceBlock);
       break;
     }
   }
