@@ -3,7 +3,7 @@
 import net from "net";
 import {Buffer} from "buffer";
 import {getPeers} from "./tracker.js";
-
+import fs from "fs";
 import Pieces from "./Pieces.js";
 
 import Queue from "./Queue.js";
@@ -23,7 +23,7 @@ function download(peer,torrent,pieces,file){
 
     
     const socket = net.Socket();
-    socket.on('error',console.log("Error recieved"));
+    socket.on('error',console.log);
     socket.connect(peer.port, peer.ip,()=>{
         
         socket.write(buildHandshake(torrent));
@@ -68,6 +68,7 @@ function onWholeMsg(socket, callback){
       savedBuf = Buffer.concat([savedBuf, recvBuf]);
   
       while (savedBuf.length >= 4 && savedBuf.length >= msgLen()) {
+        console.log("Its working till here")
         callback(savedBuf.subarray(0, msgLen()));
         savedBuf = savedBuf.subarray(msgLen());
         handshake = false;
@@ -115,7 +116,7 @@ function pieceHandler(socket, pieces, queue, torrent, file, pieceResp) {
   fs.write(file, pieceResp.block, 0, pieceResp.block.length, offset, () => {});
 
   if (pieces.isDone()) {
-    console.log('DONE!');
+    
     socket.end();
     try { fs.closeSync(file); } catch(e) {}
   } else {

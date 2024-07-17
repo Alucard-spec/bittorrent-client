@@ -16,7 +16,7 @@ export function buildHandshake(torrent){
     //info hash
     infoHash(torrent).copy(buf,28);
     //peer id
-    buf.write(genId());
+    genId().copy(buf,48);
     return buf;
 
 };
